@@ -1,0 +1,21 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Corpus — raw docs are fetched, not committed
+# (uncomment if you want to track them)
+# corpus/
+
+# Vector data never committed — lives in Pinecone

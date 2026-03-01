@@ -1,0 +1,232 @@
+[
+  {
+    "input": "What is HashiCorp Vault?",
+    "expected": "Vault is an identity-based secrets and encryption management system. It provides secure secret storage, dynamic secrets, data encryption, leasing and renewal, and revocation capabilities.",
+    "metadata": { "category": "concepts", "difficulty": "basic", "source_doc": "what-is-vault.mdx" }
+  },
+  {
+    "input": "What happens when Vault first starts up?",
+    "expected": "When Vault starts, it begins in a sealed state. In this state, Vault knows how to access the storage backend but cannot decrypt any data. It must be unsealed before it can process any requests.",
+    "metadata": { "category": "concepts", "difficulty": "basic", "source_doc": "concepts/seal.mdx" }
+  },
+  {
+    "input": "How does the unseal process work in Vault?",
+    "expected": "Vault uses Shamir's Secret Sharing to split the unseal key into multiple shards. A threshold number of shards must be provided to reconstruct the master key, which decrypts the encryption key used to access Vault's data. The command is 'vault operator unseal'.",
+    "metadata": { "category": "concepts", "difficulty": "intermediate", "source_doc": "concepts/seal.mdx" }
+  },
+  {
+    "input": "What are recovery keys in Vault and when are they used?",
+    "expected": "Recovery keys are used with Auto Unseal configurations. Unlike unseal key shards, recovery keys cannot decrypt the master key — they are purely an authorization mechanism used for operations like generating root tokens.",
+    "metadata": { "category": "concepts", "difficulty": "intermediate", "source_doc": "concepts/seal.mdx" }
+  },
+  {
+    "input": "What are the two types of tokens in Vault since version 1.0?",
+    "expected": "Since Vault 1.0, there are two token types: service tokens and batch tokens. Service tokens are the standard type that support renewal, child tokens, and explicit max TTLs. Batch tokens are not renewable, cannot create child tokens, and always use a fixed TTL.",
+    "metadata": { "category": "concepts", "difficulty": "intermediate", "source_doc": "concepts/tokens.mdx" }
+  },
+  {
+    "input": "What is the system maximum TTL for tokens in Vault?",
+    "expected": "The system maximum TTL for tokens is 32 days. This can be changed in the Vault configuration.",
+    "metadata": { "category": "concepts", "difficulty": "basic", "source_doc": "concepts/tokens.mdx" }
+  },
+  {
+    "input": "How can a root token be created in Vault?",
+    "expected": "Root tokens can be created in only three ways: the initial root token generated at 'vault operator init', by using another existing root token, or through the 'vault operator generate-root' command.",
+    "metadata": { "category": "concepts", "difficulty": "intermediate", "source_doc": "concepts/tokens.mdx" }
+  },
+  {
+    "input": "How do Vault policies work by default?",
+    "expected": "Vault policies are deny by default — an empty policy grants no permissions. There are two built-in policies: 'default' (attached to all tokens by default) and 'root' (which cannot be modified or removed).",
+    "metadata": { "category": "concepts", "difficulty": "basic", "source_doc": "concepts/policies.mdx" }
+  },
+  {
+    "input": "Can the default policy be excluded from a token in Vault?",
+    "expected": "Yes, the default policy can be excluded at token creation time using the '-no-default-policy' flag.",
+    "metadata": { "category": "concepts", "difficulty": "intermediate", "source_doc": "concepts/policies.mdx" }
+  },
+  {
+    "input": "How does the glob wildcard work in Vault policy paths?",
+    "expected": "The glob character '*' is only supported as the last character of a path and is not a regular expression. A single '+' wildcard denotes any number of characters within a single path segment and was introduced in Vault 1.1.",
+    "metadata": { "category": "concepts", "difficulty": "advanced", "source_doc": "concepts/policies.mdx" }
+  },
+  {
+    "input": "What happens to dynamic secrets when their lease expires?",
+    "expected": "When a lease expires, Vault automatically revokes the associated dynamic secret. For example, if a dynamic AWS credential lease expires, Vault will delete the IAM user or remove the assumed role credentials.",
+    "metadata": { "category": "concepts", "difficulty": "intermediate", "source_doc": "concepts/lease.mdx" }
+  },
+  {
+    "input": "How do you revoke all secrets under a specific prefix in Vault?",
+    "expected": "You can use prefix-based revocation with the command 'vault lease revoke -prefix <prefix>/', for example 'vault lease revoke -prefix aws/' to revoke all AWS dynamic secrets.",
+    "metadata": { "category": "concepts", "difficulty": "intermediate", "source_doc": "concepts/lease.mdx" }
+  },
+  {
+    "input": "What happens to leases when a token is revoked?",
+    "expected": "When a token is revoked, all leases that were created using that token are revoked as well.",
+    "metadata": { "category": "concepts", "difficulty": "basic", "source_doc": "concepts/lease.mdx" }
+  },
+  {
+    "input": "Does the KV secrets engine issue leases?",
+    "expected": "No, the KV secrets engine does not issue leases. Although it may return a lease duration, it is advisory only and not enforced.",
+    "metadata": { "category": "secrets", "difficulty": "intermediate", "source_doc": "concepts/lease.mdx" }
+  },
+  {
+    "input": "How does AppRole authentication work?",
+    "expected": "AppRole authentication requires a RoleID (always required) and a SecretID (required by default). The client submits both to the auth/approle/login endpoint. On success, Vault returns a token with the policies attached to that AppRole. AppRole is designed for automated workflows (machines and services) rather than human operators.",
+    "metadata": { "category": "auth", "difficulty": "basic", "source_doc": "auth/approle.mdx" }
+  },
+  {
+    "input": "What is the difference between pull mode and push mode for AppRole SecretIDs?",
+    "expected": "In pull mode, Vault generates a 128-bit random UUID as the SecretID, which is more secure because the SecretID can be kept confidential using Response Wrapping. In push mode, the client sets a custom SecretID value.",
+    "metadata": { "category": "auth", "difficulty": "advanced", "source_doc": "auth/approle.mdx" }
+  },
+  {
+    "input": "What is unique about the token auth method compared to other auth methods?",
+    "expected": "The token auth method is built-in and automatically available at /auth/token. It is the only auth method that cannot be disabled. It has no login capability — all actions require an existing authenticated token.",
+    "metadata": { "category": "auth", "difficulty": "intermediate", "source_doc": "auth/token.mdx" }
+  },
+  {
+    "input": "How do you authenticate to Vault using a token via the API?",
+    "expected": "To authenticate via the API, include the token in the HTTP header as 'X-Vault-Token: <token>' or 'Authorization: Bearer <token>'.",
+    "metadata": { "category": "auth", "difficulty": "basic", "source_doc": "auth/token.mdx" }
+  },
+  {
+    "input": "How do you log in to Vault using Kubernetes authentication?",
+    "expected": "Use the command 'vault write auth/kubernetes/login role=<role> jwt=<service-account-jwt>'. The default mount path is /kubernetes.",
+    "metadata": { "category": "auth", "difficulty": "basic", "source_doc": "auth/kubernetes.mdx" }
+  },
+  {
+    "input": "What changed in Vault 1.9.0 for Kubernetes auth regarding issuer validation?",
+    "expected": "In Vault 1.9.0, the default for 'disable_iss_validation' was changed to true. Previously, Vault validated the issuer by default. This change was necessary because Kubernetes 1.21+ uses different issuer values.",
+    "metadata": { "category": "auth", "difficulty": "advanced", "source_doc": "auth/kubernetes.mdx" }
+  },
+  {
+    "input": "What is the default TCP listener address for Vault?",
+    "expected": "The default TCP listener address is 127.0.0.1:8200.",
+    "metadata": { "category": "configuration", "difficulty": "basic", "source_doc": "configuration/listener/tcp.mdx" }
+  },
+  {
+    "input": "What is the default maximum request size for the Vault TCP listener?",
+    "expected": "The default maximum request size is 33554432 bytes (32 MB).",
+    "metadata": { "category": "configuration", "difficulty": "intermediate", "source_doc": "configuration/listener/tcp.mdx" }
+  },
+  {
+    "input": "What is the default minimum TLS version for Vault's TCP listener?",
+    "expected": "The default minimum TLS version is TLS 1.2 (tls12).",
+    "metadata": { "category": "configuration", "difficulty": "intermediate", "source_doc": "configuration/listener/tcp.mdx" }
+  },
+  {
+    "input": "What is the default cluster address port relative to the API address?",
+    "expected": "The default cluster address is one port higher than the API address. For example, if the API address is port 8200, the cluster address defaults to port 8201.",
+    "metadata": { "category": "configuration", "difficulty": "intermediate", "source_doc": "configuration/listener/tcp.mdx" }
+  },
+  {
+    "input": "What is the difference between KV v1 and KV v2 secrets engines?",
+    "expected": "KV v1 is non-versioned — it only stores the most recently written value for a key, with no history. KV v2 supports versioning, storing a configurable number of versions per key (default 10). KV v1 has better performance and reduced storage due to fewer storage calls and no locking.",
+    "metadata": { "category": "secrets", "difficulty": "intermediate", "source_doc": "secrets/kv/index.mdx" }
+  },
+  {
+    "input": "How many versions does the KV v2 secrets engine retain by default?",
+    "expected": "The KV v2 secrets engine retains 10 versions per key by default.",
+    "metadata": { "category": "secrets", "difficulty": "basic", "source_doc": "secrets/kv/index.mdx" }
+  },
+  {
+    "input": "What is the default TTL for certificates issued by the PKI secrets engine?",
+    "expected": "The default TTL for the PKI secrets engine is 30 days. It can be tuned to a longer duration, for example 8760h (1 year).",
+    "metadata": { "category": "secrets", "difficulty": "intermediate", "source_doc": "secrets/pki.mdx" }
+  },
+  {
+    "input": "What is the recommended root CA setup when using Vault's PKI secrets engine?",
+    "expected": "The recommended approach is to use an external root CA and have Vault act as an intermediate CA. This way the root key material never lives within Vault.",
+    "metadata": { "category": "secrets", "difficulty": "advanced", "source_doc": "secrets/pki.mdx" }
+  },
+  {
+    "input": "What are the three types of credentials the AWS secrets engine can generate?",
+    "expected": "The AWS secrets engine supports three credential types: iam_user (creates an IAM user with attached policies), assumed_role (generates STS AssumeRole credentials), and federation_token (generates STS federation tokens).",
+    "metadata": { "category": "secrets", "difficulty": "intermediate", "source_doc": "secrets/aws.mdx" }
+  },
+  {
+    "input": "What happens to an IAM user created by Vault's AWS secrets engine when its lease expires?",
+    "expected": "When the lease expires, Vault deletes the IAM user and its associated access keys.",
+    "metadata": { "category": "secrets", "difficulty": "intermediate", "source_doc": "secrets/aws.mdx" }
+  },
+  {
+    "input": "What is the default key type for the Transit secrets engine?",
+    "expected": "The default key type for the Transit secrets engine is aes256-gcm96.",
+    "metadata": { "category": "secrets", "difficulty": "intermediate", "source_doc": "secrets/transit.mdx" }
+  },
+  {
+    "input": "Does the Transit secrets engine store the data it encrypts?",
+    "expected": "No, the Transit secrets engine does not store the data it encrypts. It provides cryptography as a service — it encrypts and decrypts data in transit without persisting the plaintext or ciphertext.",
+    "metadata": { "category": "secrets", "difficulty": "basic", "source_doc": "secrets/transit.mdx" }
+  },
+  {
+    "input": "How can you tell which version of a Transit key was used to encrypt data?",
+    "expected": "The ciphertext includes a version prefix in the format 'vault:v1:...' where the version number (v1, v2, etc.) indicates which version of the encryption key was used.",
+    "metadata": { "category": "secrets", "difficulty": "advanced", "source_doc": "secrets/transit.mdx" }
+  },
+  {
+    "input": "What are the SSH secrets engine modes?",
+    "expected": "The SSH secrets engine supports three modes: signed SSH certificates, one-time passwords (OTP), and dynamic keys. The dynamic keys mode is deprecated.",
+    "metadata": { "category": "secrets", "difficulty": "intermediate", "source_doc": "secrets/ssh/index.mdx" }
+  },
+  {
+    "input": "How do you rotate the root credentials for the database secrets engine?",
+    "expected": "Use the command 'vault write -force <database-path>/rotate-root/<connection-name>' to rotate root credentials. After rotation, only Vault knows the new credentials.",
+    "metadata": { "category": "secrets", "difficulty": "advanced", "source_doc": "secrets/database/index.mdx" }
+  },
+  {
+    "input": "What is the difference between dynamic and static roles in the database secrets engine?",
+    "expected": "Dynamic roles create new database credentials with each request, with a lease that revokes the credentials when expired. Static roles manage an existing database user by automatically rotating its password on a configurable schedule.",
+    "metadata": { "category": "secrets", "difficulty": "advanced", "source_doc": "secrets/database/index.mdx" }
+  },
+  {
+    "input": "What is the default address for the Consul storage backend?",
+    "expected": "The default address for the Consul storage backend is 127.0.0.1:8500.",
+    "metadata": { "category": "configuration", "difficulty": "basic", "source_doc": "configuration/storage/consul.mdx" }
+  },
+  {
+    "input": "What permissions does Vault need on the AWS KMS key for auto-unseal?",
+    "expected": "Vault needs the following AWS KMS permissions: kms:Encrypt, kms:Decrypt, and kms:DescribeKey.",
+    "metadata": { "category": "configuration", "difficulty": "advanced", "source_doc": "configuration/seal/awskms.mdx" }
+  },
+  {
+    "input": "What is the default max_request_duration for Vault's TCP listener?",
+    "expected": "The default max_request_duration for Vault's TCP listener is 90 seconds.",
+    "metadata": { "category": "configuration", "difficulty": "intermediate", "source_doc": "configuration/listener/tcp.mdx" }
+  },
+  {
+    "input": "How do you configure Vault to use the AppRole auth method?",
+    "expected": "Enable AppRole with 'vault auth enable approle', then create a role, fetch the RoleID, and generate a SecretID. Clients authenticate by submitting the RoleID and SecretID to the auth/approle/login endpoint.",
+    "metadata": { "category": "auth", "difficulty": "basic", "source_doc": "auth/approle.mdx" }
+  },
+  {
+    "input": "What Kubernetes version introduced a breaking change for Vault's Kubernetes auth?",
+    "expected": "Kubernetes 1.21+ introduced changes to service account tokens that required Vault to change the default for 'disable_iss_validation' to true in Vault 1.9.0.",
+    "metadata": { "category": "auth", "difficulty": "advanced", "source_doc": "auth/kubernetes.mdx" }
+  },
+  {
+    "input": "How does Vault handle secret revocation when an entire auth method is disabled?",
+    "expected": "Vault supports tree-based revocation. When an auth method is disabled, all tokens issued by that auth method are revoked, and all leases created using those tokens are also revoked.",
+    "metadata": { "category": "concepts", "difficulty": "advanced", "source_doc": "what-is-vault.mdx" }
+  },
+  {
+    "input": "Can Vault generate TLS certificates on demand?",
+    "expected": "Yes, Vault's PKI secrets engine can dynamically generate X.509 certificates on demand, eliminating the need to manually manage and distribute certificates.",
+    "metadata": { "category": "secrets", "difficulty": "basic", "source_doc": "secrets/pki.mdx" }
+  },
+  {
+    "input": "What is the maximum number of namespaces supported in Vault open source?",
+    "expected": "I don't have enough information in the provided documentation to answer that. Namespaces are an Enterprise feature and the provided documentation does not cover namespace limits.",
+    "metadata": { "category": "negative", "difficulty": "trick", "source_doc": null }
+  },
+  {
+    "input": "How does Vault's Raft storage backend handle leader election?",
+    "expected": "I don't have enough information in the provided documentation to answer that.",
+    "metadata": { "category": "negative", "difficulty": "trick", "source_doc": null }
+  },
+  {
+    "input": "What is Vault's Sentinel policy framework?",
+    "expected": "I don't have enough information in the provided documentation to answer that. Sentinel is an Enterprise feature not covered in the provided documentation.",
+    "metadata": { "category": "negative", "difficulty": "trick", "source_doc": null }
+  }
+]
