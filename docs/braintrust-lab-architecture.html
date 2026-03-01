@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Braintrust RAG Lab — Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+  :root {
+    --bg: #0c0e12;
+    --surface: #14171e;
+    --surface-2: #1a1e28;
+    --surface-3: #222736;
+    --border: #2a3040;
+    --text: #e0e4ee;
+    --text-dim: #7a8299;
+    --accent: #4f8cff;
+    --accent-glow: rgba(79, 140, 255, 0.15);
+    --green: #34d399;
+    --green-glow: rgba(52, 211, 153, 0.12);
+    --orange: #f59e0b;
+    --orange-glow: rgba(245, 158, 11, 0.12);
+    --pink: #ec4899;
+    --pink-glow: rgba(236, 72, 153, 0.12);
+    --purple: #a78bfa;
+    --purple-glow: rgba(167, 139, 250, 0.12);
+    --red: #f87171;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 32px;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 56px;
+  }
+  .header .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-glow);
+    border: 1px solid rgba(79,140,255,0.2);
+    padding: 5px 12px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+  .header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, #e0e4ee 0%, #7a8299 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header p {
+    font-size: 16px;
+    color: var(--text-dim);
+    max-width: 680px;
+  }
+
+  /* Sections */
+  .section {
+    margin-bottom: 48px;
+  }
+  .section-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Free Tier Box */
+  .tier-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+  }
+  .tier-box h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tier-box h3 .price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--green);
+    background: var(--green-glow);
+    border: 1px solid rgba(52,211,153,0.2);
+    padding: 3px 10px;
+    border-radius: 4px;
+  }
+  .tier-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .tier-stat {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .tier-stat .label {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 6px;
+  }
+  .tier-stat .value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .tier-stat .note {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* What You Get */
+  .features-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+  }
+  .feature-card.included { border-left: 3px solid var(--green); }
+  .feature-card.limited { border-left: 3px solid var(--orange); }
+  .feature-card.excluded { border-left: 3px solid var(--red); opacity: 0.6; }
+  .feature-card h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .feature-card p {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+  }
+  .badge.yes { background: var(--green-glow); color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
+  .badge.cap { background: var(--orange-glow); color: var(--orange); border: 1px solid rgba(245,158,11,0.2); }
+  .badge.no { background: rgba(248,113,113,0.1); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+
+  /* Toolchain */
+  .tool-section {
+    margin-bottom: 32px;
+  }
+  .tool-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tool-section h3 .cat-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .tool-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .tool-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tool-table td {
+    font-size: 14px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(42,48,64,0.5);
+    vertical-align: top;
+  }
+  .tool-table tr:last-child td { border-bottom: none; }
+  .tool-table .tool-name {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .tool-table .sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    display: block;
+    margin-top: 2px;
+  }
+  .tool-table .purpose {
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  /* Architecture Diagram */
+  .diagram-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 32px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+  .diagram-container h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+
+  /* Mermaid-style ASCII diagram */
+  .arch-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .arch-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .arch-box {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 20px;
+    text-align: center;
+    min-width: 140px;
+    position: relative;
+  }
+  .arch-box .box-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 4px;
+  }
+  .arch-box .box-name {
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .arch-box .box-detail {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 3px;
+  }
+
+  .arch-box.bt { background: var(--accent-glow); border-color: rgba(79,140,255,0.3); }
+  .arch-box.bt .box-name { color: var(--accent); }
+  .arch-box.aws { background: var(--orange-glow); border-color: rgba(245,158,11,0.3); }
+  .arch-box.aws .box-name { color: var(--orange); }
+  .arch-box.gh { background: var(--purple-glow); border-color: rgba(167,139,250,0.3); }
+  .arch-box.gh .box-name { color: var(--purple); }
+  .arch-box.local { background: var(--green-glow); border-color: rgba(52,211,153,0.3); }
+  .arch-box.local .box-name { color: var(--green); }
+  .arch-box.llm { background: var(--pink-glow); border-color: rgba(236,72,153,0.3); }
+  .arch-box.llm .box-name { color: var(--pink); }
+
+  .arch-arrow {
+    text-align: center;
+    color: var(--text-dim);
+    padding: 4px 0;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  .arch-arrow.side {
+    padding: 0 6px;
+  }
+
+  /* Phase steps */
+  .phase-list {
+    counter-reset: phase;
+  }
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 16px;
+    position: relative;
+    padding-left: 72px;
+  }
+  .phase::before {
+    counter-increment: phase;
+    content: counter(phase);
+    position: absolute;
+    left: 24px;
+    top: 24px;
+    width: 32px;
+    height: 32px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .phase h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .phase p {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .phase .tech-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .tech-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text-dim);
+  }
+
+  /* Callout */
+  .callout {
+    background: var(--accent-glow);
+    border: 1px solid rgba(79,140,255,0.2);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-top: 24px;
+  }
+  .callout h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .callout p {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 768px) {
+    .tier-grid { grid-template-columns: 1fr 1fr; }
+    .features-grid { grid-template-columns: 1fr; }
+    .arch-row { flex-wrap: wrap; }
+    .phase { padding-left: 64px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="tag">Interview Lab Prep</div>
+    <h1>Braintrust RAG Lab Architecture</h1>
+    <p>End-to-end RAG pipeline with Braintrust evaluation, scoring, and observability — built entirely on the free tier.</p>
+  </div>
+
+  <!-- Free Tier Breakdown -->
+  <div class="section">
+    <div class="section-title">Braintrust Free Tier — What You Actually Get</div>
+    <div class="tier-box">
+      <h3>Free Plan <span class="price">$0 / month</span></h3>
+      <div class="tier-grid">
+        <div class="tier-stat">
+          <div class="label">Trace Spans</div>
+          <div class="value">1M</div>
+          <div class="note">Per month</div>
+        </div>
+        <div class="tier-stat">
+          <div class="label">Storage</div>
+          <div class="value">1 GB</div>
+          <div class="note">Processed data</div>
+        </div>
+        <div class="tier-stat">
+          <div class="label">Scores</div>
+          <div class="value">10K</div>
+          <div class="note">Per month</div>
+        </div>
+        <div class="tier-stat">
+          <div class="label">Retention</div>
+          <div class="value">14 days</div>
+          <div class="note">Log retention</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card included">
+        <h4>SDK + Tracing <span class="badge yes">INCLUDED</span></h4>
+        <p>Python & TS SDKs, auto-instrumentation, wrap_openai, full trace capture with nested spans for every LLM call and tool invocation.</p>
+      </div>
+      <div class="feature-card included">
+        <h4>Experiments & Evals <span class="badge yes">INCLUDED</span></h4>
+        <p>Run offline evals via braintrust eval CLI. Side-by-side experiment comparisons, regression detection, score breakdowns.</p>
+      </div>
+      <div class="feature-card included">
+        <h4>Datasets <span class="badge yes">INCLUDED</span></h4>
+        <p>Create and version datasets. Convert production traces to test cases with one click. Golden dataset management.</p>
+      </div>
+      <div class="feature-card included">
+        <h4>AI Proxy / Gateway <span class="badge yes">INCLUDED</span></h4>
+        <p>Single OpenAI-compatible endpoint for OpenAI, Anthropic, Google models. Auto-tracing, caching (temp=0), no extra setup.</p>
+      </div>
+      <div class="feature-card included">
+        <h4>Autoevals Library <span class="badge yes">INCLUDED</span></h4>
+        <p>Built-in scorers: Factuality, Faithfulness, ContextRelevancy, ContextPrecision, AnswerRelevancy, Levenshtein, LLM-as-judge, RAGAS metrics.</p>
+      </div>
+      <div class="feature-card included">
+        <h4>Playground <span class="badge yes">INCLUDED</span></h4>
+        <p>Prototype prompts with real data. Test functions and tools interactively. Run scorers against datasets from the UI.</p>
+      </div>
+      <div class="feature-card limited">
+        <h4>Online Scoring <span class="badge cap">CAPPED</span></h4>
+        <p>Score production traces automatically. Counts against 10K/mo score limit — manage with sampling rates.</p>
+      </div>
+      <div class="feature-card excluded">
+        <h4>Hybrid / On-Prem Deploy <span class="badge no">ENTERPRISE</span></h4>
+        <p>Self-hosted Brainstore, custom retention, SSO, dedicated support. Not available on free or pro tiers.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toolchain Breakdown -->
+  <div class="section">
+    <div class="section-title">Required Tools &amp; Platforms</div>
+
+    <div class="tool-section">
+      <h3>Braintrust <span class="cat-badge" style="background:var(--accent-glow);color:var(--accent);border:1px solid rgba(79,140,255,0.2)">EVAL + OBSERVABILITY</span></h3>
+      <table class="tool-table">
+        <tr>
+          <th>Component</th><th>Purpose</th><th>Cost</th>
+        </tr>
+        <tr>
+          <td class="tool-name">Cloud Platform<span class="sub">braintrust.dev</span></td>
+          <td class="purpose">UI for experiments, datasets, playground, log viewer, dashboards</td>
+          <td>Free</td>
+        </tr>
+        <tr>
+          <td class="tool-name">Python SDK<span class="sub">braintrust + autoevals</span></td>
+          <td class="purpose">Tracing, eval framework, wrap_openai, RAGAS scorers</td>
+          <td>Free / OSS</td>
+        </tr>
+        <tr>
+          <td class="tool-name">AI Proxy<span class="sub">api.braintrust.dev/v1/proxy</span></td>
+          <td class="purpose">Unified LLM gateway with auto-caching and trace capture</td>
+          <td>Free</td>
+        </tr>
+        <tr>
+          <td class="tool-name">CLI<span class="sub">braintrust eval</span></td>
+          <td class="purpose">Run evaluations from terminal, CI/CD integration</td>
+          <td>Free / OSS</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tool-section">
+      <h3>LLM Provider <span class="cat-badge" style="background:var(--pink-glow);color:var(--pink);border:1px solid rgba(236,72,153,0.2)">GENERATION + EMBEDDINGS</span></h3>
+      <table class="tool-table">
+        <tr><th>Component</th><th>Purpose</th><th>Cost</th></tr>
+        <tr>
+          <td class="tool-name">OpenAI API<span class="sub">gpt-4o-mini + text-embedding-3-small</span></td>
+          <td class="purpose">RAG generation model and embedding model. Cheapest high-quality option for a lab. Can also use via Braintrust AI Proxy for auto-tracing.</td>
+          <td>Pay-as-you-go<br><span style="font-size:12px;color:var(--text-dim)">~$0.50-2 for lab</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tool-section">
+      <h3>Vector Database <span class="cat-badge" style="background:var(--green-glow);color:var(--green);border:1px solid rgba(52,211,153,0.2)">RETRIEVAL</span></h3>
+      <table class="tool-table">
+        <tr><th>Option</th><th>Sub-Components</th><th>Why</th><th>Cost</th></tr>
+        <tr>
+          <td class="tool-name">Pinecone<span class="sub">Serverless (free tier)</span></td>
+          <td class="purpose">1 index, 2GB storage, unlimited reads</td>
+          <td class="purpose">Used in Braintrust's own ToolRAG cookbook. Serverless — zero infra management. Best option for demonstrating production patterns.</td>
+          <td>Free</td>
+        </tr>
+        <tr>
+          <td class="tool-name" style="color:var(--text-dim)">Alt: LanceDB<span class="sub">Local / embedded</span></td>
+          <td class="purpose">Embedded vector DB, no server</td>
+          <td class="purpose">Used in Braintrust's CodaHelpDesk cookbook. Simpler but doesn't demonstrate cloud retrieval.</td>
+          <td>Free / OSS</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tool-section">
+      <h3>GitHub <span class="cat-badge" style="background:var(--purple-glow);color:var(--purple);border:1px solid rgba(167,139,250,0.2)">CODE + CI/CD</span></h3>
+      <table class="tool-table">
+        <tr><th>Component</th><th>Purpose</th><th>Cost</th></tr>
+        <tr>
+          <td class="tool-name">Repository<span class="sub">github.com</span></td>
+          <td class="purpose">Lab source code, eval scripts, dataset definitions, prompt configs</td>
+          <td>Free</td>
+        </tr>
+        <tr>
+          <td class="tool-name">Actions<span class="sub">CI workflow</span></td>
+          <td class="purpose">Optional — run braintrust eval on push to catch regressions. Demonstrates production CI/CD eval patterns.</td>
+          <td>Free (2K min/mo)</td>
+        </tr>
+        <tr>
+          <td class="tool-name">Secrets<span class="sub">Repository settings</span></td>
+          <td class="purpose">Store BRAINTRUST_API_KEY, OPENAI_API_KEY, PINECONE_API_KEY for CI</td>
+          <td>Free</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tool-section">
+      <h3>AWS <span class="cat-badge" style="background:var(--orange-glow);color:var(--orange);border:1px solid rgba(245,158,11,0.2)">OPTIONAL — PRODUCTION SIMULATION</span></h3>
+      <table class="tool-table">
+        <tr><th>Component</th><th>Purpose</th><th>Cost</th></tr>
+        <tr>
+          <td class="tool-name">S3<span class="sub">Document store</span></td>
+          <td class="purpose">Store source documents (PDFs, markdown) that feed the RAG pipeline. Demonstrates a real document ingestion path.</td>
+          <td>Free tier</td>
+        </tr>
+        <tr>
+          <td class="tool-name">Lambda<span class="sub">Ingestion function</span></td>
+          <td class="purpose">Optional trigger: S3 event → chunk docs → embed → upsert to Pinecone. Shows event-driven ingestion architecture.</td>
+          <td>Free tier</td>
+        </tr>
+        <tr>
+          <td class="tool-name" style="color:var(--text-dim)">CloudWatch<span class="sub">Logging</span></td>
+          <td class="purpose">Lambda execution logs, latency metrics. Low priority — Braintrust handles most observability.</td>
+          <td>Free tier</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tool-section">
+      <h3>Local Dev <span class="cat-badge" style="background:var(--green-glow);color:var(--green);border:1px solid rgba(52,211,153,0.2)">DEVELOPMENT</span></h3>
+      <table class="tool-table">
+        <tr><th>Component</th><th>Purpose</th><th>Cost</th></tr>
+        <tr>
+          <td class="tool-name">Python 3.11+<span class="sub">venv / pyenv</span></td>
+          <td class="purpose">Runtime for SDK, eval scripts, RAG pipeline</td>
+          <td>Free</td>
+        </tr>
+        <tr>
+          <td class="tool-name">Packages<span class="sub">braintrust, autoevals, openai, pinecone-client</span></td>
+          <td class="purpose">Core dependencies for the lab</td>
+          <td>Free / OSS</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Architecture Diagram -->
+  <div class="section">
+    <div class="section-title">Macro Architecture</div>
+
+    <div class="diagram-container">
+      <h3>Data Flow — Ingestion + Retrieval + Evaluation</h3>
+
+      <div class="arch-flow">
+        <!-- Row 1: Source -->
+        <div class="arch-row">
+          <div class="arch-box aws">
+            <div class="box-label">Source</div>
+            <div class="box-name">S3 Bucket</div>
+            <div class="box-detail">Docs (MD, PDF)</div>
+          </div>
+          <div class="arch-arrow side">→</div>
+          <div class="arch-box local">
+            <div class="box-label">Process</div>
+            <div class="box-name">Chunker</div>
+            <div class="box-detail">Split by heading / token limit</div>
+          </div>
+          <div class="arch-arrow side">→</div>
+          <div class="arch-box llm">
+            <div class="box-label">Embed</div>
+            <div class="box-name">OpenAI Embeddings</div>
+            <div class="box-detail">text-embedding-3-small</div>
+          </div>
+          <div class="arch-arrow side">→</div>
+          <div class="arch-box" style="background:var(--green-glow);border-color:rgba(52,211,153,0.3);">
+            <div class="box-label">Store</div>
+            <div class="box-name" style="color:var(--green)">Pinecone</div>
+            <div class="box-detail">Serverless index</div>
+          </div>
+        </div>
+
+        <div class="arch-arrow" style="padding:12px 0;">↕ ingestion above · query path below</div>
+
+        <!-- Row 2: Query Path -->
+        <div class="arch-row">
+          <div class="arch-box local">
+            <div class="box-label">Input</div>
+            <div class="box-name">User Query</div>
+            <div class="box-detail">Question or prompt</div>
+          </div>
+          <div class="arch-arrow side">→</div>
+          <div class="arch-box" style="background:var(--green-glow);border-color:rgba(52,211,153,0.3);">
+            <div class="box-label">Retrieve</div>
+            <div class="box-name" style="color:var(--green)">Pinecone</div>
+            <div class="box-detail">top_k similarity</div>
+          </div>
+          <div class="arch-arrow side">→</div>
+          <div class="arch-box llm">
+            <div class="box-label">Generate</div>
+            <div class="box-name">GPT-4o-mini</div>
+            <div class="box-detail">Context + query → answer</div>
+          </div>
+          <div class="arch-arrow side">→</div>
+          <div class="arch-box bt">
+            <div class="box-label">Observe</div>
+            <div class="box-name">Braintrust</div>
+            <div class="box-detail">Trace spans + logs</div>
+          </div>
+        </div>
+
+        <div class="arch-arrow" style="padding:12px 0;">↓ traces feed evaluation loop</div>
+
+        <!-- Row 3: Eval Loop -->
+        <div class="arch-row">
+          <div class="arch-box bt">
+            <div class="box-label">Curate</div>
+            <div class="box-name">Datasets</div>
+            <div class="box-detail">Trace → test case</div>
+          </div>
+          <div class="arch-arrow side">→</div>
+          <div class="arch-box bt">
+            <div class="box-label">Score</div>
+            <div class="box-name">Autoevals</div>
+            <div class="box-detail">Factuality, RAGAS, LLM-judge</div>
+          </div>
+          <div class="arch-arrow side">→</div>
+          <div class="arch-box bt">
+            <div class="box-label">Compare</div>
+            <div class="box-name">Experiments</div>
+            <div class="box-detail">Side-by-side diffs</div>
+          </div>
+          <div class="arch-arrow side">→</div>
+          <div class="arch-box gh">
+            <div class="box-label">Automate</div>
+            <div class="box-name">GitHub Actions</div>
+            <div class="box-detail">CI eval on push</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <h4>Why this architecture works for the interview</h4>
+      <p>This is essentially the Braintrust ToolRAG cookbook pattern extended with a real document source (S3), a production-grade vector store (Pinecone), and a CI/CD eval loop (GitHub Actions). It demonstrates all three Braintrust pillars — tracing, evaluation, and observability — while connecting to your existing AWS and Terraform fluency. The AI Proxy handles LLM routing and caching so every call is traced without extra instrumentation.</p>
+    </div>
+  </div>
+
+  <!-- High-Level Approach / Phases -->
+  <div class="section">
+    <div class="section-title">High-Level Build Approach</div>
+    <div class="phase-list">
+      <div class="phase">
+        <h4>Accounts & Keys</h4>
+        <p>Sign up for Braintrust free tier. Create a Pinecone serverless index (free). Grab API keys for OpenAI, Braintrust, and Pinecone. Store them in .env locally and GitHub Secrets for CI.</p>
+        <div class="tech-tags">
+          <span class="tech-tag">braintrust.dev/signup</span>
+          <span class="tech-tag">pinecone.io</span>
+          <span class="tech-tag">platform.openai.com</span>
+        </div>
+      </div>
+
+      <div class="phase">
+        <h4>Document Ingestion Pipeline</h4>
+        <p>Collect 20-30 markdown or text documents — Braintrust's own docs work great. Write a Python script that chunks by heading, generates embeddings via OpenAI, and upserts vectors + metadata to Pinecone. Optionally store raw docs in S3 and trigger ingestion via Lambda.</p>
+        <div class="tech-tags">
+          <span class="tech-tag">openai embeddings</span>
+          <span class="tech-tag">pinecone upsert</span>
+          <span class="tech-tag">chunking logic</span>
+          <span class="tech-tag">S3 (optional)</span>
+        </div>
+      </div>
+
+      <div class="phase">
+        <h4>RAG Query Function</h4>
+        <p>Build the core retrieval + generation flow. Query comes in, embed it, search Pinecone for top_k chunks, assemble a prompt with retrieved context, call GPT-4o-mini via Braintrust AI Proxy (wrap_openai). Every call is auto-traced.</p>
+        <div class="tech-tags">
+          <span class="tech-tag">braintrust.wrap_openai</span>
+          <span class="tech-tag">pinecone query</span>
+          <span class="tech-tag">prompt template</span>
+          <span class="tech-tag">auto-tracing</span>
+        </div>
+      </div>
+
+      <div class="phase">
+        <h4>Build a Golden Dataset</h4>
+        <p>Create 30-50 question/expected-answer pairs covering your doc corpus. Mix factual, multi-hop, and "I don't know" cases. Upload to Braintrust as a versioned dataset. Traces from Step 3 can also be promoted to test cases.</p>
+        <div class="tech-tags">
+          <span class="tech-tag">braintrust datasets</span>
+          <span class="tech-tag">QA pairs</span>
+          <span class="tech-tag">edge cases</span>
+        </div>
+      </div>
+
+      <div class="phase">
+        <h4>Scoring & Evaluation</h4>
+        <p>Wire up autoevals scorers: Factuality for answer correctness, ContextRelevancy and ContextPrecision for retrieval quality, Faithfulness for hallucination detection. Run via braintrust eval CLI. Compare experiments when you tweak top_k, chunking, or prompt.</p>
+        <div class="tech-tags">
+          <span class="tech-tag">autoevals.Factuality</span>
+          <span class="tech-tag">autoevals.ragas.*</span>
+          <span class="tech-tag">LLM-as-judge</span>
+          <span class="tech-tag">braintrust eval</span>
+        </div>
+      </div>
+
+      <div class="phase">
+        <h4>Experiment & Iterate</h4>
+        <p>Run multiple experiments varying the knobs: different chunk sizes, top_k values, prompt templates, models. Braintrust auto-compares each run, showing per-test-case regressions and improvements. Use the Playground to prototype prompt tweaks interactively.</p>
+        <div class="tech-tags">
+          <span class="tech-tag">side-by-side diffs</span>
+          <span class="tech-tag">playground</span>
+          <span class="tech-tag">score trends</span>
+        </div>
+      </div>
+
+      <div class="phase">
+        <h4>CI/CD Integration (Optional Polish)</h4>
+        <p>Add a GitHub Actions workflow that runs braintrust eval on every push. Fail the pipeline if scores drop below a threshold. This demonstrates the production eval loop that Braintrust promotes — and ties directly to your DevOps background.</p>
+        <div class="tech-tags">
+          <span class="tech-tag">github actions</span>
+          <span class="tech-tag">braintrust eval CLI</span>
+          <span class="tech-tag">quality gates</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Cost Summary -->
+  <div class="section">
+    <div class="section-title">Total Cost Estimate</div>
+    <div class="tier-box">
+      <h3>Lab Total <span class="price">~$1-3</span></h3>
+      <div class="tier-grid">
+        <div class="tier-stat">
+          <div class="label">Braintrust</div>
+          <div class="value">$0</div>
+          <div class="note">Free tier</div>
+        </div>
+        <div class="tier-stat">
+          <div class="label">Pinecone</div>
+          <div class="value">$0</div>
+          <div class="note">Free serverless</div>
+        </div>
+        <div class="tier-stat">
+          <div class="label">OpenAI</div>
+          <div class="value">~$1-3</div>
+          <div class="note">Embeddings + gen + scoring</div>
+        </div>
+        <div class="tier-stat">
+          <div class="label">AWS</div>
+          <div class="value">$0</div>
+          <div class="note">Free tier S3/Lambda</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

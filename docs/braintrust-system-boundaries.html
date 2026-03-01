@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Braintrust Lab — System Boundary Diagrams</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700&display=swap');
+
+  :root {
+    --bg: #0c0e12;
+    --surface: #13161d;
+    --border: #252a38;
+    --border-light: #2f3545;
+    --text: #dce0ec;
+    --text-dim: #6e7590;
+    --text-faint: #454d66;
+
+    /* System colors */
+    --local: #34d399;
+    --local-bg: rgba(52,211,153,0.06);
+    --local-border: rgba(52,211,153,0.2);
+
+    --openai: #ec4899;
+    --openai-bg: rgba(236,72,153,0.06);
+    --openai-border: rgba(236,72,153,0.2);
+
+    --pinecone: #f59e0b;
+    --pinecone-bg: rgba(245,158,11,0.06);
+    --pinecone-border: rgba(245,158,11,0.2);
+
+    --bt: #4f8cff;
+    --bt-bg: rgba(79,140,255,0.06);
+    --bt-border: rgba(79,140,255,0.2);
+
+    --gh: #a78bfa;
+    --gh-bg: rgba(167,139,250,0.06);
+    --gh-border: rgba(167,139,250,0.2);
+
+    --aws: #fb923c;
+    --aws-bg: rgba(251,146,60,0.06);
+    --aws-border: rgba(251,146,60,0.2);
+
+    --runner: #38bdf8;
+    --runner-bg: rgba(56,189,248,0.06);
+    --runner-border: rgba(56,189,248,0.2);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.6;
+  }
+
+  .page { max-width: 1200px; margin: 0 auto; padding: 48px 32px; }
+
+  .page-header {
+    margin-bottom: 48px;
+  }
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 8px;
+  }
+  .page-header p {
+    color: var(--text-dim);
+    font-size: 15px;
+    max-width: 720px;
+  }
+
+  /* ── Diagram Container ── */
+  .diagram {
+    margin-bottom: 64px;
+  }
+  .diagram-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .diagram-subtitle {
+    font-size: 14px;
+    color: var(--text-faint);
+    margin-bottom: 20px;
+  }
+
+  /* ── Swim Lane Layout ── */
+  .swimlane-diagram {
+    display: grid;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  /* Lane header (left column) */
+  .lane {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    min-height: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .lane:last-child { border-bottom: none; }
+
+  .lane-label {
+    padding: 20px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-right: 1px solid var(--border);
+  }
+  .lane-label .sys-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .lane-label .sys-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+  .lane-label .sys-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    position: relative;
+    top: -1px;
+  }
+
+  /* Lane content area */
+  .lane-content {
+    padding: 16px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-height: 70px;
+  }
+
+  /* ── Step Nodes ── */
+  .step {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.4;
+    max-width: 220px;
+    position: relative;
+  }
+  .step .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+    text-align: center;
+    border-radius: 50%;
+    margin-right: 5px;
+    position: relative;
+    top: -1px;
+  }
+  .step .step-label {
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .step .step-detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: block;
+    margin-top: 3px;
+  }
+
+  /* Color coding steps by what they CALL */
+  .step.runs-local { border-left: 3px solid var(--local); }
+  .step.runs-local .step-num { background: var(--local-bg); color: var(--local); border: 1px solid var(--local-border); }
+
+  .step.calls-openai { border-left: 3px solid var(--openai); }
+  .step.calls-openai .step-num { background: var(--openai-bg); color: var(--openai); border: 1px solid var(--openai-border); }
+
+  .step.calls-pinecone { border-left: 3px solid var(--pinecone); }
+  .step.calls-pinecone .step-num { background: var(--pinecone-bg); color: var(--pinecone); border: 1px solid var(--pinecone-border); }
+
+  .step.calls-bt { border-left: 3px solid var(--bt); }
+  .step.calls-bt .step-num { background: var(--bt-bg); color: var(--bt); border: 1px solid var(--bt-border); }
+
+  .step.calls-gh { border-left: 3px solid var(--gh); }
+  .step.calls-gh .step-num { background: var(--gh-bg); color: var(--gh); border: 1px solid var(--gh-border); }
+
+  /* ── Arrows between steps ── */
+  .arrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--text-faint);
+    padding: 0 2px;
+    flex-shrink: 0;
+  }
+  .arrow.down {
+    display: block;
+    text-align: center;
+    padding: 2px 0;
+    font-size: 13px;
+  }
+
+  /* ── Cross-boundary call indicator ── */
+  .api-call {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-top: 4px;
+  }
+  .api-call.to-openai { background: var(--openai-bg); color: var(--openai); border: 1px solid var(--openai-border); }
+  .api-call.to-pinecone { background: var(--pinecone-bg); color: var(--pinecone); border: 1px solid var(--pinecone-border); }
+  .api-call.to-bt { background: var(--bt-bg); color: var(--bt); border: 1px solid var(--bt-border); }
+  .api-call.to-gh { background: var(--gh-bg); color: var(--gh); border: 1px solid var(--gh-border); }
+  .api-call.to-aws { background: var(--aws-bg); color: var(--aws); border: 1px solid var(--aws-border); }
+
+  /* ── Phase Dividers ── */
+  .phase-divider {
+    grid-column: 1 / -1;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 16px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Annotation boxes ── */
+  .annotation {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--bt);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .annotation strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ── Expanded Flow (vertical) ── */
+  .vflow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 24px;
+  }
+
+  .vflow-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .vflow-env {
+    min-width: 140px;
+    padding: 12px 16px;
+    border-right: 2px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .vflow-env .env-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .vflow-env .env-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .vflow-steps {
+    flex: 1;
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .vflow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .vflow-step .v-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .vflow-step .v-content {
+    font-size: 13px;
+  }
+  .vflow-step .v-content .v-label {
+    font-weight: 600;
+    display: block;
+  }
+  .vflow-step .v-content .v-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: block;
+    margin-top: 2px;
+  }
+
+  .boundary-cross {
+    display: flex;
+    align-items: center;
+    padding: 6px 20px 6px 156px;
+    gap: 8px;
+  }
+  .boundary-line {
+    flex: 1;
+    height: 1px;
+    border-top: 1px dashed var(--border-light);
+  }
+  .boundary-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-faint);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    padding: 2px 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+
+  /* ── Compact process table ── */
+  .process-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+  .process-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .process-table td {
+    font-size: 13px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(37,42,56,0.5);
+    vertical-align: top;
+  }
+  .process-table tr:last-child td { border-bottom: none; }
+  .process-table .code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .process-table .dim { color: var(--text-dim); font-size: 12px; }
+
+  .env-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .env-tag.local { background: var(--local-bg); color: var(--local); border: 1px solid var(--local-border); }
+  .env-tag.openai { background: var(--openai-bg); color: var(--openai); border: 1px solid var(--openai-border); }
+  .env-tag.pinecone { background: var(--pinecone-bg); color: var(--pinecone); border: 1px solid var(--pinecone-border); }
+  .env-tag.bt { background: var(--bt-bg); color: var(--bt); border: 1px solid var(--bt-border); }
+  .env-tag.gh { background: var(--gh-bg); color: var(--gh); border: 1px solid var(--gh-border); }
+  .env-tag.runner { background: var(--runner-bg); color: var(--runner); border: 1px solid var(--runner-border); }
+  .env-tag.aws { background: var(--aws-bg); color: var(--aws); border: 1px solid var(--aws-border); }
+
+  .section-gap { height: 24px; }
+
+  @media (max-width: 768px) {
+    .lane { grid-template-columns: 120px 1fr; }
+    .lane-content { padding: 12px; }
+    .step { max-width: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="page-header">
+  <h1>System Boundary Diagrams</h1>
+  <p>Where each step executes, which system owns it, and where the API calls cross boundaries.</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- DIAGRAM 1: LOCAL DEVELOPMENT WORKFLOW                        -->
+<!-- ============================================================ -->
+<div class="diagram">
+  <div class="diagram-title">Diagram 1 — Local Development Workflow</div>
+  <div class="diagram-subtitle">Your machine orchestrates everything. Cloud services are called via API.</div>
+
+  <!-- Process breakdown table -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+
+    <!-- PHASE A: Ingestion -->
+    <div class="phase-divider">Phase A — Document Ingestion (run once or on doc changes)</div>
+
+    <table class="process-table">
+      <tr>
+        <th style="width:36px">#</th>
+        <th style="width:180px">Step</th>
+        <th style="width:110px">Runs In</th>
+        <th style="width:130px">Calls Out To</th>
+        <th>What Happens</th>
+      </tr>
+      <tr>
+        <td><strong>1</strong></td>
+        <td><strong>Load documents</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="dim">local filesystem</span></td>
+        <td>Python reads markdown/text files from a local directory (or pulls from S3 via <span class="code">boto3</span>)</td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td><strong>Chunk documents</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="dim">nothing — pure Python</span></td>
+        <td>Your chunker function splits each doc by heading or token count. Outputs a list of <span class="code">{text, metadata}</span> objects. No API calls.</td>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td><strong>Generate embeddings</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="env-tag openai">OpenAI API</span></td>
+        <td>For each chunk, call <span class="code">openai.embeddings.create()</span> with <span class="code">text-embedding-3-small</span>. Runs locally, sends text to OpenAI, gets back 1536-dim vectors.</td>
+      </tr>
+      <tr>
+        <td><strong>4</strong></td>
+        <td><strong>Upsert vectors</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="env-tag pinecone">Pinecone API</span></td>
+        <td>Call <span class="code">index.upsert()</span> sending vectors + metadata. Pinecone stores and indexes them. Your machine just sends the HTTP request.</td>
+      </tr>
+    </table>
+
+    <!-- PHASE B: RAG Query -->
+    <div class="phase-divider">Phase B — RAG Query Loop (iterative development)</div>
+
+    <table class="process-table">
+      <tr>
+        <th style="width:36px">#</th>
+        <th style="width:180px">Step</th>
+        <th style="width:110px">Runs In</th>
+        <th style="width:130px">Calls Out To</th>
+        <th>What Happens</th>
+      </tr>
+      <tr>
+        <td><strong>5</strong></td>
+        <td><strong>Embed the query</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="env-tag openai">OpenAI API</span></td>
+        <td>Same embedding call as step 3, but for the user's question. Returns a query vector.</td>
+      </tr>
+      <tr>
+        <td><strong>6</strong></td>
+        <td><strong>Retrieve context</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="env-tag pinecone">Pinecone API</span></td>
+        <td>Call <span class="code">index.query(vector, top_k=5)</span>. Pinecone runs similarity search and returns matching chunks with metadata.</td>
+      </tr>
+      <tr>
+        <td><strong>7</strong></td>
+        <td><strong>Assemble prompt</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="dim">nothing — string formatting</span></td>
+        <td>Stitch retrieved chunks into a system prompt template with the user query. Pure Python string operations.</td>
+      </tr>
+      <tr>
+        <td><strong>8</strong></td>
+        <td><strong>Generate answer</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="env-tag openai">OpenAI API</span><br><span class="env-tag bt" style="margin-top:4px">Braintrust Proxy</span></td>
+        <td>Call <span class="code">client.chat.completions.create()</span> via <span class="code">wrap_openai</span>. Request routes through Braintrust AI Proxy → OpenAI. Braintrust auto-captures the trace span.</td>
+      </tr>
+    </table>
+
+    <!-- PHASE C: Eval -->
+    <div class="phase-divider">Phase C — Evaluation & Scoring (run per experiment)</div>
+
+    <table class="process-table">
+      <tr>
+        <th style="width:36px">#</th>
+        <th style="width:180px">Step</th>
+        <th style="width:110px">Runs In</th>
+        <th style="width:130px">Calls Out To</th>
+        <th>What Happens</th>
+      </tr>
+      <tr>
+        <td><strong>9</strong></td>
+        <td><strong><span class="code">braintrust eval</span></strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="env-tag bt">Braintrust API</span></td>
+        <td>CLI loads your eval file, pulls dataset from Braintrust, creates an experiment. Orchestration runs locally.</td>
+      </tr>
+      <tr>
+        <td><strong>10</strong></td>
+        <td><strong>Execute task × N</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="dim">steps 5-8 repeat</span></td>
+        <td>For each test case in the dataset, the eval framework calls your RAG function. All the same API calls happen per test case.</td>
+      </tr>
+      <tr>
+        <td><strong>11</strong></td>
+        <td><strong>Score outputs</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="env-tag openai">OpenAI API</span></td>
+        <td>Autoevals scorers run locally. Deterministic scorers (Levenshtein) are pure computation. LLM-as-judge scorers (Factuality, Faithfulness) call OpenAI to grade each output.</td>
+      </tr>
+      <tr>
+        <td><strong>12</strong></td>
+        <td><strong>Publish experiment</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="env-tag bt">Braintrust API</span></td>
+        <td>Scores, traces, and outputs are pushed to Braintrust. You view results in the Braintrust UI (browser).</td>
+      </tr>
+    </table>
+
+    <!-- PHASE D: Iterate -->
+    <div class="phase-divider">Phase D — Iterate (playground + prompt tweaks)</div>
+
+    <table class="process-table">
+      <tr>
+        <th style="width:36px">#</th>
+        <th style="width:180px">Step</th>
+        <th style="width:110px">Runs In</th>
+        <th style="width:130px">Calls Out To</th>
+        <th>What Happens</th>
+      </tr>
+      <tr>
+        <td><strong>13</strong></td>
+        <td><strong>Review in UI</strong></td>
+        <td><span class="env-tag bt">BRAINTRUST UI</span></td>
+        <td><span class="dim">browser</span></td>
+        <td>Compare experiments side-by-side, inspect per-test-case diffs, identify regressions. This is the one step that doesn't run on your machine.</td>
+      </tr>
+      <tr>
+        <td><strong>14</strong></td>
+        <td><strong>Playground prototyping</strong></td>
+        <td><span class="env-tag bt">BRAINTRUST UI</span></td>
+        <td><span class="env-tag openai">OpenAI API</span></td>
+        <td>Braintrust's Playground runs prompts server-side against your datasets. Useful for quick prompt iteration without touching code.</td>
+      </tr>
+      <tr>
+        <td><strong>15</strong></td>
+        <td><strong>Update code, re-eval</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="dim">back to step 9</span></td>
+        <td>Tweak chunking, top_k, prompt template, or model in your code. Run <span class="code">braintrust eval</span> again. Compare new experiment to previous.</td>
+      </tr>
+    </table>
+
+  </div>
+
+  <div class="annotation">
+    <strong>Key takeaway:</strong> Your local machine is the orchestrator for steps 1-12. It runs Python code that makes API calls outbound to three managed services — OpenAI (compute-heavy embedding and generation), Pinecone (vector storage and search), and Braintrust (trace collection and experiment management). The only steps that run "in the cloud" without your machine involved are the Braintrust UI interactions (13-14).
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--local)"></div>Runs on your machine (Python)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--openai)"></div>OpenAI API call</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--pinecone)"></div>Pinecone API call</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--bt)"></div>Braintrust API / UI</div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- DIAGRAM 2: CI/CD PIPELINE WORKFLOW                           -->
+<!-- ============================================================ -->
+<div class="diagram">
+  <div class="diagram-title">Diagram 2 — CI/CD Pipeline Workflow</div>
+  <div class="diagram-subtitle">GitHub Actions runner replaces your machine. Same API calls, different orchestrator.</div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+
+    <!-- PHASE A: Trigger -->
+    <div class="phase-divider">Phase A — Trigger</div>
+
+    <table class="process-table">
+      <tr>
+        <th style="width:36px">#</th>
+        <th style="width:180px">Step</th>
+        <th style="width:110px">Runs In</th>
+        <th style="width:130px">Calls Out To</th>
+        <th>What Happens</th>
+      </tr>
+      <tr>
+        <td><strong>1</strong></td>
+        <td><strong>Push code</strong></td>
+        <td><span class="env-tag local">YOUR MACHINE</span></td>
+        <td><span class="env-tag gh">GitHub</span></td>
+        <td><span class="code">git push</span> sends updated eval scripts, prompts, or RAG code to the repository.</td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td><strong>Workflow triggers</strong></td>
+        <td><span class="env-tag gh">GITHUB</span></td>
+        <td><span class="env-tag runner">GH Actions Runner</span></td>
+        <td>GitHub detects the push event, matches the workflow trigger (<span class="code">on: push</span>), and spins up an ephemeral Ubuntu runner.</td>
+      </tr>
+    </table>
+
+    <!-- PHASE B: Setup -->
+    <div class="phase-divider">Phase B — Runner Setup</div>
+
+    <table class="process-table">
+      <tr>
+        <th style="width:36px">#</th>
+        <th style="width:180px">Step</th>
+        <th style="width:110px">Runs In</th>
+        <th style="width:130px">Calls Out To</th>
+        <th>What Happens</th>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td><strong>Checkout + install</strong></td>
+        <td><span class="env-tag runner">GH ACTIONS RUNNER</span></td>
+        <td><span class="dim">PyPI, GitHub</span></td>
+        <td><span class="code">actions/checkout</span> clones repo. <span class="code">pip install</span> pulls braintrust, autoevals, openai, pinecone-client.</td>
+      </tr>
+      <tr>
+        <td><strong>4</strong></td>
+        <td><strong>Load secrets</strong></td>
+        <td><span class="env-tag runner">GH ACTIONS RUNNER</span></td>
+        <td><span class="env-tag gh">GitHub Secrets</span></td>
+        <td>Injects <span class="code">BRAINTRUST_API_KEY</span>, <span class="code">OPENAI_API_KEY</span>, <span class="code">PINECONE_API_KEY</span> as environment variables.</td>
+      </tr>
+    </table>
+
+    <!-- PHASE C: Eval (same as local, different host) -->
+    <div class="phase-divider">Phase C — Evaluation (identical to local steps 9-12)</div>
+
+    <table class="process-table">
+      <tr>
+        <th style="width:36px">#</th>
+        <th style="width:180px">Step</th>
+        <th style="width:110px">Runs In</th>
+        <th style="width:130px">Calls Out To</th>
+        <th>What Happens</th>
+      </tr>
+      <tr>
+        <td><strong>5</strong></td>
+        <td><strong><span class="code">braintrust eval</span></strong></td>
+        <td><span class="env-tag runner">GH ACTIONS RUNNER</span></td>
+        <td><span class="env-tag bt">Braintrust API</span></td>
+        <td>Same CLI command. Pulls dataset, creates experiment. The runner is now the orchestrator instead of your laptop.</td>
+      </tr>
+      <tr>
+        <td><strong>6</strong></td>
+        <td><strong>Execute task × N</strong></td>
+        <td><span class="env-tag runner">GH ACTIONS RUNNER</span></td>
+        <td><span class="env-tag openai">OpenAI API</span><br><span class="env-tag pinecone" style="margin-top:4px">Pinecone API</span></td>
+        <td>For each test case: embed query → retrieve from Pinecone → generate via OpenAI/BT Proxy. Identical API calls as local development.</td>
+      </tr>
+      <tr>
+        <td><strong>7</strong></td>
+        <td><strong>Score outputs</strong></td>
+        <td><span class="env-tag runner">GH ACTIONS RUNNER</span></td>
+        <td><span class="env-tag openai">OpenAI API</span></td>
+        <td>LLM-as-judge scorers call OpenAI. Deterministic scorers run as pure computation on the runner.</td>
+      </tr>
+      <tr>
+        <td><strong>8</strong></td>
+        <td><strong>Publish experiment</strong></td>
+        <td><span class="env-tag runner">GH ACTIONS RUNNER</span></td>
+        <td><span class="env-tag bt">Braintrust API</span></td>
+        <td>Results pushed to Braintrust. Experiment appears in UI alongside your locally-run experiments.</td>
+      </tr>
+    </table>
+
+    <!-- PHASE D: Gate -->
+    <div class="phase-divider">Phase D — Quality Gate</div>
+
+    <table class="process-table">
+      <tr>
+        <th style="width:36px">#</th>
+        <th style="width:180px">Step</th>
+        <th style="width:110px">Runs In</th>
+        <th style="width:130px">Calls Out To</th>
+        <th>What Happens</th>
+      </tr>
+      <tr>
+        <td><strong>9</strong></td>
+        <td><strong>Check thresholds</strong></td>
+        <td><span class="env-tag runner">GH ACTIONS RUNNER</span></td>
+        <td><span class="dim">local logic</span></td>
+        <td>Script checks if avg scores meet minimum thresholds (e.g., Factuality ≥ 0.8). If below threshold, <span class="code">exit 1</span> fails the pipeline.</td>
+      </tr>
+      <tr>
+        <td><strong>10</strong></td>
+        <td><strong>Pass / Fail</strong></td>
+        <td><span class="env-tag gh">GITHUB</span></td>
+        <td><span class="dim">—</span></td>
+        <td>GitHub marks the commit check as passed or failed. PR is blocked on failure. Green check on success.</td>
+      </tr>
+    </table>
+
+  </div>
+
+  <div class="annotation">
+    <strong>Key takeaway:</strong> The CI pipeline is your local workflow with the orchestrator swapped. Instead of your machine running Python and making API calls, the GitHub Actions runner does it. The external service calls (OpenAI, Pinecone, Braintrust) are identical. The only new elements are the trigger mechanism (git push → workflow), secret injection, and the quality gate logic at the end. This is why you develop locally first and CI "just works" — same code, same commands, same API calls.
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--local)"></div>Your machine</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--runner)"></div>GH Actions runner (ephemeral VM)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--gh)"></div>GitHub platform</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--openai)"></div>OpenAI API</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--pinecone)"></div>Pinecone API</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--bt)"></div>Braintrust API / UI</div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
