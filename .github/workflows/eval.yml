@@ -54,6 +54,13 @@ jobs:
         run: |
           braintrust eval evals/run_eval.py 2>&1 | tee eval_output.txt
 
+      - name: Debug - show raw eval output
+        if: always()
+        run: |
+          echo "=== RAW EVAL OUTPUT (last 100 lines) ==="
+          tail -100 eval_output.txt
+          echo "=== END RAW OUTPUT ==="
+
       - name: Check score thresholds
         id: gate
         run: python evals/gate.py eval_output.txt

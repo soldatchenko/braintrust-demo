@@ -27,24 +27,56 @@ THRESHOLDS = {
     "ContextRelevance": 60.0,
 }
 
-# Regex to match score lines in braintrust eval output.
-# Format varies but typically: "ScoreName   XX.XX% ..." or similar.
-# We look for a word followed by a percentage.
-_SCORE_PATTERN = re.compile(
-    r"^(\w+)\s+(\d+(?:\.\d+)?)%",
-    re.MULTILINE,
-)
+# Strip ANSI escape codes that terminals/CI may inject into output
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def strip_ansi(text: str) -> str:
+    return _ANSI_ESCAPE.sub("", text)
 
 
 def parse_scores(text: str) -> dict[str, float]:
-    """Extract scorer names and percentages from braintrust eval output."""
+    """
+    Extract scorer names and values from braintrust eval output.
+
+    Handles multiple possible formats:
+      - "AnswerCorrectness   96.30% ..."        (percentage)
+      - "AnswerCorrectness   0.9630 ..."         (decimal 0-1)
+      - "AnswerCorrectness: 96.30%"              (colon-separated)
+      - "+12.30% AnswerCorrectness"              (diff format, value before name)
+      - table rows with pipes                     (markdown tables)
+    """
+    text = strip_ansi(text)
     scores = {}
-    for match in _SCORE_PATTERN.finditer(text):
-        name = match.group(1)
-        value = float(match.group(2))
-        # Only capture scores we care about (ignore noise)
+
+    # Pattern 1: ScoreName followed by percentage (e.g., "AnswerCorrectness   96.30%")
+    for match in re.finditer(r"(\w+)\s+(\d+(?:\.\d+)?)%", text):
+        name, value = match.group(1), float(match.group(2))
         if name in THRESHOLDS:
             scores[name] = value
+
+    # Pattern 2: ScoreName followed by decimal 0-1 (e.g., "AnswerCorrectness  0.963")
+    if not scores:
+        for match in re.finditer(r"(\w+)\s+(0\.\d+|1\.0+)\b", text):
+            name, value = match.group(1), float(match.group(2)) * 100
+            if name in THRESHOLDS:
+                scores[name] = value
+
+    # Pattern 3: percentage before name (e.g., "96.30% (+0.00%) AnswerCorrectness")
+    if not scores:
+        for match in re.finditer(r"(\d+(?:\.\d+)?)%\s+(?:\([^)]*\)\s+)?(\w+)", text):
+            value, name = float(match.group(1)), match.group(2)
+            if name in THRESHOLDS:
+                scores[name] = value
+
+    # Pattern 4: "name (score)" or "name  score" with decimal (e.g., table output)
+    if not scores:
+        for match in re.finditer(r"(\w+)\s*[:(]\s*(\d+(?:\.\d+)?)\s*[%)]?", text):
+            name, value = match.group(1), float(match.group(2))
+            if name in THRESHOLDS:
+                # If value is <= 1, assume it's a 0-1 score
+                scores[name] = value * 100 if value <= 1.0 else value
+
     return scores
 
 
@@ -101,6 +133,15 @@ def main():
         text = f.read()
 
     scores = parse_scores(text)
+
+    # Debug: if no scores found, dump what we see to help diagnose
+    if not scores:
+        clean = strip_ansi(text)
+        print("DEBUG: No scores parsed. Last 50 lines of cleaned output:")
+        for line in clean.strip().split("\n")[-50:]:
+            print(f"  | {line}")
+        print()
+
     failures = check_thresholds(scores)
     summary = format_summary(scores, failures)
 
