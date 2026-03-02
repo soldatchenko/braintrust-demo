@@ -40,26 +40,23 @@ def parse_scores(text: str) -> dict[str, float]:
     Extract scorer names and values from braintrust eval output.
 
     Braintrust eval summary format (observed in CI):
-      | 0.963 (+0.00%) 'AnswerCorrectness'   (X improvements, Y regressions)
+      89.33% (+01.72%) 'AnswerCorrectness' score    (3 improvements, 2 regressions)
 
-    The value comes BEFORE the quoted name. Scores are decimals (0-1),
-    while token counts have suffixes like 'tok', 's', '$'.
+    Percentage comes BEFORE the quoted name. The word 'score' after the name
+    distinguishes scorers from metrics (which have suffixes like tok, s, $).
     """
     text = strip_ansi(text)
     scores = {}
 
-    # Primary pattern: decimal value followed by quoted scorer name
-    # Matches: "0.963 (+0.00%) 'AnswerCorrectness'" or "1 (+0.00%) 'Faithfulness'"
-    # Excludes lines with unit suffixes (tok, s, $) which are metadata not scores
+    # Primary pattern: percentage followed by quoted scorer name + "score"
+    # Matches: "89.33% (+01.72%) 'AnswerCorrectness' score"
     for match in re.finditer(
-        r"\|\s*(\d+(?:\.\d+)?)\s+\([^)]*\)\s+'(\w+)'",
+        r"(\d+(?:\.\d+)?)%\s+\([^)]*\)\s+'(\w+)'\s+score",
         text,
     ):
-        value_str, name = match.group(1), match.group(2)
+        value_str, name = float(match.group(1)), match.group(2)
         if name in THRESHOLDS:
-            value = float(value_str)
-            # Convert 0-1 scores to percentage
-            scores[name] = value * 100 if value <= 1.0 else value
+            scores[name] = value_str
 
     # Fallback: ScoreName followed by percentage (e.g., "AnswerCorrectness   96.30%")
     if not scores:
