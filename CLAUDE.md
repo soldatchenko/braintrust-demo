@@ -136,10 +136,11 @@ braintrust-demo/
 ├── evals/
 │   ├── dataset.json           # Golden Q&A pairs (46 cases, also uploaded to Braintrust)
 │   ├── scorers.py             # Custom scorers: AnswerCorrectness, ContextRelevance, Faithfulness, HasCitation
-│   └── run_eval.py            # Braintrust Eval() runner
+│   ├── run_eval.py            # Braintrust Eval() runner
+│   └── gate.py                # Score threshold gate for CI/CD (fails job if scores regress)
 ├── .github/
 │   └── workflows/
-│       └── eval.yml           # CI/CD eval pipeline (phase 2 — not yet built)
+│       └── eval.yml           # CI/CD eval pipeline — runs on PRs against main
 └── requirements.txt           # Pinned Python dependencies
 ```
 
@@ -178,14 +179,22 @@ Everything runs on your machine. No AWS infra required.
 
 Latest eval scores: AnswerCorrectness 96.3%, Faithfulness 100%, HasCitation 97.6%, ContextRelevance 75.8%
 
-### Phase 2 — CI/CD Workflow (future)
-Builds on phase 1. AWS infra lives in `/cipherift-infrastructure` (separate repo).
+### Phase 2 — CI/CD Workflow (COMPLETE — GitHub Actions only, no AWS infra)
+Eval quality gate runs on every PR against main. No AWS infra needed.
+
+1. ~~Add GitHub Actions workflow: PR → `braintrust eval` → score gate → pass/fail~~
+2. ~~Score threshold gate (`evals/gate.py`) — fails CI if scores regress below floor~~
+3. ~~PR comment with eval results and link to Braintrust dashboard~~
+4. ~~Store API keys in GitHub Secrets (OPENAI_API_KEY, PINECONE_API_KEY, BRAINTRUST_API_KEY)~~
+
+Score thresholds: AnswerCorrectness ≥85%, Faithfulness ≥90%, HasCitation ≥85%, ContextRelevance ≥60%
+
+### Phase 3 — AWS Infrastructure (future, optional)
+Would extend Phase 2 with AWS infra from `/cipherift-infrastructure`.
 
 1. Provision S3 bucket for corpus storage via Terragrunt
 2. Migrate local `./corpus/` to S3 as the source of truth
 3. (Optional) Lambda trigger: S3 event → ingest pipeline → Pinecone upsert
-4. Add GitHub Actions workflow: push → `braintrust eval` → quality gate
-5. Store API keys in GitHub Secrets
 
 ---
 

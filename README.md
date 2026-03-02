@@ -77,7 +77,11 @@ braintrust-demo/
 ├── evals/
 │   ├── dataset.json           # Golden eval dataset (46 Q&A pairs)
 │   ├── scorers.py             # Custom scorers (AnswerCorrectness, ContextRelevance, etc.)
-│   └── run_eval.py            # Braintrust Eval() runner
+│   ├── run_eval.py            # Braintrust Eval() runner
+│   └── gate.py                # Score threshold gate for CI/CD
+├── .github/
+│   └── workflows/
+│       └── eval.yml           # CI/CD eval pipeline (runs on PRs)
 ├── docs/                      # Reference architecture diagrams (HTML/JSX)
 ├── .env.example               # All required environment variables
 ├── requirements.txt           # Pinned Python dependencies
@@ -100,3 +104,38 @@ braintrust-demo/
 - **Similarity metric**: Cosine (direction-based, safe default for text).
 - **top_k**: 7 chunks retrieved per query.
 - **Scorers**: Custom LLM-as-judge scorers rather than autoevals built-ins, for better handling of verbose-but-correct answers and multi-chunk synthesis.
+
+## CI/CD Eval Pipeline
+
+Every PR against `main` automatically runs the full eval suite via GitHub Actions.
+
+### How it works
+
+1. PR opened/updated → GitHub Actions triggers `braintrust eval`
+2. Eval runs the full RAG pipeline against the 46-case golden dataset
+3. Braintrust records the experiment (visible in the dashboard)
+4. `evals/gate.py` checks scores against minimum thresholds
+5. Results are posted as a PR comment with pass/fail status
+6. If any score is below threshold, the PR is blocked
+
+### Score thresholds
+
+| Scorer | Minimum | Current |
+|---|---|---|
+| AnswerCorrectness | 85% | 96.3% |
+| Faithfulness | 90% | 100% |
+| HasCitation | 85% | 97.6% |
+| ContextRelevance | 60% | 75.8% |
+
+### Setup: GitHub Secrets
+
+Add these in **Repo → Settings → Secrets and variables → Actions**:
+
+- `OPENAI_API_KEY`
+- `PINECONE_API_KEY`
+- `BRAINTRUST_API_KEY`
+
+### Cost per run
+
+Each eval run costs ~$0.10-0.15 (46 test cases × embedding + generation + 3 scorer LLM calls).
+The workflow uses `concurrency` to cancel in-flight runs on re-push, saving costs.

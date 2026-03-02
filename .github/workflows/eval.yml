@@ -1,0 +1,119 @@
+# RAG Eval Quality Gate
+#
+# Runs the Braintrust evaluation suite on every PR against main.
+# This is the CI/CD eval loop: push → eval → score gate → pass/fail.
+#
+# The eval hits live services (OpenAI for embeddings + generation,
+# Pinecone for retrieval, Braintrust for scoring/logging), so each
+# run costs a small amount (~$0.10-0.15 with the current dataset size).
+#
+# Required GitHub Secrets:
+#   OPENAI_API_KEY, PINECONE_API_KEY, BRAINTRUST_API_KEY
+
+name: RAG Eval
+
+on:
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same PR (saves API costs)
+concurrency:
+  group: eval-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    name: Run Braintrust Eval
+    runs-on: ubuntu-latest
+    # Grant write permission so we can post PR comments
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run evaluation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
+          PINECONE_INDEX_NAME: vault-rag-demo
+          BRAINTRUST_PROJECT: vault-rag-demo
+        run: |
+          braintrust eval evals/run_eval.py 2>&1 | tee eval_output.txt
+
+      - name: Check score thresholds
+        id: gate
+        run: python evals/gate.py eval_output.txt
+
+      - name: Comment eval results on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            let summary = 'Eval gate summary not available.';
+            try {
+              summary = fs.readFileSync('gate_summary.txt', 'utf8');
+            } catch (e) {
+              // gate.py may not have run if eval itself failed
+              try {
+                summary = fs.readFileSync('eval_output.txt', 'utf8').slice(-2000);
+              } catch (e2) {
+                summary = 'Eval did not produce output.';
+              }
+            }
+
+            const gateResult = '${{ steps.gate.outcome }}';
+            const emoji = gateResult === 'success' ? '✅' : '❌';
+            const status = gateResult === 'success' ? 'PASSED' : 'FAILED';
+
+            const body = [
+              `## ${emoji} RAG Eval ${status}`,
+              '',
+              '```',
+              summary,
+              '```',
+              '',
+              `> Full results: [Braintrust Dashboard](https://www.braintrust.dev/app/vault-rag-demo)`,
+            ].join('\n');
+
+            // Find and update existing comment, or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const marker = '## ✅ RAG Eval PASSED';
+            const marker2 = '## ❌ RAG Eval FAILED';
+            const existing = comments.find(c =>
+              c.body.startsWith(marker) || c.body.startsWith(marker2)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
