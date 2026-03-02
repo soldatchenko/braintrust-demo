@@ -8,13 +8,15 @@ a Score(name, score) where score is 0-1. They receive these arguments:
   - input:    the original question
   - metadata: any extra fields from the dataset row
 
-We have four scorers targeting different failure modes:
+Four scorers targeting different failure modes:
 
-  Factuality     (built-in)       - Is the answer correct vs. expected?
-  ContextRelevance (LLM-as-judge) - Did retrieval find the right chunks?
-  Faithfulness   (LLM-as-judge)   - Does the answer only use info from the retrieved chunks?
-  HasCitation    (deterministic)   - Does the answer reference source documents?
+  AnswerCorrectness (LLM-as-judge) - Is the answer factually correct vs. expected?
+  ContextRelevance  (LLM-as-judge) - Did retrieval find the right chunks?
+  Faithfulness      (LLM-as-judge) - Does the answer only use info from the retrieved chunks?
+  HasCitation       (deterministic) - Does the answer reference source documents?
 """
+
+import json
 
 import openai
 from braintrust import Score
@@ -25,27 +27,92 @@ _judge_client = openai.OpenAI()
 _JUDGE_MODEL = "gpt-4.1-mini"
 
 
-# --- LLM-as-Judge: Context Relevance ---
+# --- LLM-as-Judge: Answer Correctness ---
+# Replaces autoevals Factuality which was too strict about string matching.
+# This scorer understands that a verbose-but-correct answer is still correct,
+# and that the answer may include additional relevant details not in the expected.
 
-_CONTEXT_RELEVANCE_PROMPT = """You are evaluating the relevance of retrieved document chunks to a user's question.
+_ANSWER_CORRECTNESS_PROMPT = """You are evaluating whether an AI assistant's answer is factually correct.
+
+Question: {question}
+
+Expected answer (ground truth):
+{expected}
+
+AI's actual answer:
+{answer}
+
+Evaluate whether the AI's answer captures the KEY FACTS from the expected answer.
+
+Scoring rules:
+- The AI's answer does NOT need to be word-for-word identical to the expected answer
+- A longer, more detailed answer that INCLUDES all key facts from the expected answer scores high
+- An answer that is correct but MISSES key facts from the expected answer scores lower
+- An answer that CONTRADICTS the expected answer scores very low
+- For "I don't know" type answers: if the expected answer is also "I don't know", score 1.0. If the expected answer has real content, score 0.0.
+
+Score from 0 to 1:
+  0.0 = the answer contradicts the expected answer or completely misses the point
+  0.5 = the answer captures some key facts but misses important ones
+  0.8 = the answer captures most key facts, minor omissions only
+  1.0 = the answer captures all key facts from the expected answer (additional correct detail is fine)
+
+Respond with ONLY a JSON object: {{"score": <number>, "reasoning": "<brief explanation>"}}"""
+
+
+def answer_correctness(*, output, expected, input, **kwargs) -> Score:
+    """
+    Evaluate whether the answer is factually correct vs. the expected answer.
+    More forgiving than exact-match — a verbose correct answer still scores high.
+    """
+    answer = output.get("answer", "") if isinstance(output, dict) else str(output)
+
+    response = _judge_client.chat.completions.create(
+        model=_JUDGE_MODEL,
+        messages=[{
+            "role": "user",
+            "content": _ANSWER_CORRECTNESS_PROMPT.format(
+                question=input, expected=expected, answer=answer,
+            ),
+        }],
+        temperature=0,
+        response_format={"type": "json_object"},
+    )
+
+    result = json.loads(response.choices[0].message.content)
+    score = max(0.0, min(1.0, float(result.get("score", 0))))
+    reasoning = result.get("reasoning", "")
+
+    return Score(name="AnswerCorrectness", score=score, metadata={"reasoning": reasoning})
+
+
+# --- LLM-as-Judge: Context Relevance ---
+# Refined to explicitly handle multi-chunk synthesis — the v1 judge
+# was penalizing cases where the answer required combining info from
+# multiple chunks, even when the chunks collectively had good coverage.
+
+_CONTEXT_RELEVANCE_PROMPT = """You are evaluating whether retrieved document chunks collectively contain enough information to answer a question.
 
 Question: {question}
 
 Retrieved chunks:
 {chunks}
 
-For each chunk, assess whether it contains information relevant to answering the question.
-Then give an overall relevance score from 0 to 1:
-  0.0 = none of the chunks are relevant
-  0.5 = some chunks are relevant but key information is missing
-  1.0 = the chunks contain all the information needed to answer the question
+IMPORTANT: The answer may require COMBINING information from multiple chunks. Evaluate the chunks as a SET, not individually. Even if no single chunk fully answers the question, the set of chunks may contain all necessary information when combined.
+
+Score from 0 to 1:
+  0.0 = the chunks are completely irrelevant to the question
+  0.3 = the chunks are tangentially related but don't contain the needed information
+  0.6 = some chunks are relevant and contain partial information, but key details are missing
+  0.8 = the chunks collectively contain most of the needed information
+  1.0 = the chunks collectively contain all the information needed to fully answer the question
 
 Respond with ONLY a JSON object: {{"score": <number>, "reasoning": "<brief explanation>"}}"""
 
 
 def context_relevance(*, output, expected, input, **kwargs) -> Score:
     """
-    Evaluate whether the retrieved chunks are relevant to the question.
+    Evaluate whether the retrieved chunks collectively contain the right information.
     A low score here means the problem is in retrieval (embeddings, chunking,
     or corpus coverage), not in generation.
     """
@@ -68,7 +135,6 @@ def context_relevance(*, output, expected, input, **kwargs) -> Score:
         response_format={"type": "json_object"},
     )
 
-    import json
     result = json.loads(response.choices[0].message.content)
     score = max(0.0, min(1.0, float(result.get("score", 0))))
     reasoning = result.get("reasoning", "")
@@ -126,7 +192,6 @@ def faithfulness(*, output, expected, input, **kwargs) -> Score:
         response_format={"type": "json_object"},
     )
 
-    import json
     result = json.loads(response.choices[0].message.content)
     score = max(0.0, min(1.0, float(result.get("score", 0))))
     reasoning = result.get("reasoning", "")
@@ -136,13 +201,11 @@ def faithfulness(*, output, expected, input, **kwargs) -> Score:
 
 # --- Deterministic: Has Citation ---
 
-# Source file stems that indicate a real Vault doc reference
 _CITATION_INDICATORS = [
     "according to",
     "documentation",
     "section",
     "docs",
-    # Vault-specific terms that indicate citing a source
     "auth method",
     "secrets engine",
     "the vault",
@@ -160,7 +223,6 @@ def has_citation(*, output, expected, input, **kwargs) -> Score:
     """
     answer = output.get("answer", "").lower()
 
-    # If the pipeline correctly says "I don't know", no citation needed
     if "don't have enough information" in answer or "cannot answer" in answer:
         return Score(name="HasCitation", score=1.0, metadata={"reason": "N/A — decline to answer"})
 

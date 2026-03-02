@@ -111,32 +111,36 @@ this is very achievable with the Vault doc subset above.
 ```
 braintrust-demo/
 ├── CLAUDE.md                  # This file
+├── README.md                  # Setup, usage, and architecture overview
+├── DIARY.md                   # Project learnings and decision rationale
 ├── .env.example               # Template — never commit .env
-├── .env                       # Local secrets (gitignored)
-├── corpus/                    # Raw Vault markdown docs (phase 1 local corpus)
+├── .env                       # Non-sensitive config (gitignored)
+├── .gitignore
+├── corpus/                    # Raw Vault MDX docs (143 files, fetched not committed)
+│   ├── auth/                  # 21 files — approle, kubernetes, token, etc.
+│   ├── secrets/               # 51 files — kv, pki, aws, transit, etc.
+│   ├── concepts/              # 23 files — seal, tokens, policies, leases
+│   ├── configuration/         # 43 files — listener, storage, seals
+│   └── *.mdx                  # 5 top-level files — what-is-vault, install, etc.
 ├── docs/                      # Reference architecture docs (HTML/JSX visuals)
 │   ├── braintrust-lab-architecture.html
 │   ├── braintrust-system-boundaries.html
 │   ├── braintrust-cicd-stripe.jsx
 │   └── rag-eval-explainer.jsx
 ├── ingestion/
-│   ├── fetch_corpus.py        # Downloads/copies Vault docs from source
-│   ├── chunk.py               # Chunking logic (heading-based + token-count fallback)
+│   ├── chunk.py               # Heading-based chunker with breadcrumb prefixes + merge pass
 │   └── embed_and_upsert.py    # Embeds chunks and upserts to Pinecone
 ├── rag/
-│   ├── pipeline.py            # Core RAG query function (embed → retrieve → generate)
-│   └── prompts.py             # System prompt templates
+│   ├── pipeline.py            # Core RAG: embed → retrieve → generate (with wrap_openai tracing)
+│   └── prompts.py             # System prompt templates (cheap to iterate on)
 ├── evals/
-│   ├── dataset.json           # Golden Q&A pairs (committed to repo)
-│   ├── eval_rag.py            # Main Braintrust eval file
-│   └── scorers/
-│       ├── faithfulness.py    # LLM-as-judge: does answer stick to context?
-│       ├── context_relevance.py  # LLM-as-judge: were retrieved chunks relevant?
-│       └── has_citation.py    # Deterministic: does answer cite a Vault section?
+│   ├── dataset.json           # Golden Q&A pairs (46 cases, also uploaded to Braintrust)
+│   ├── scorers.py             # Custom scorers: AnswerCorrectness, ContextRelevance, Faithfulness, HasCitation
+│   └── run_eval.py            # Braintrust Eval() runner
 ├── .github/
 │   └── workflows/
-│       └── eval.yml           # CI/CD eval pipeline (phase 2)
-└── requirements.txt
+│       └── eval.yml           # CI/CD eval pipeline (phase 2 — not yet built)
+└── requirements.txt           # Pinned Python dependencies
 ```
 
 ---
@@ -161,16 +165,18 @@ S3_CORPUS_BUCKET=...
 
 ## Build Phases
 
-### Phase 1 — Local Workflow (current focus)
+### Phase 1 — Local Workflow (COMPLETE)
 Everything runs on your machine. No AWS infra required.
 
-1. Fetch and store a curated subset of Vault docs into `./corpus/`
-2. Chunk the docs and embed them into Pinecone (serverless free tier)
-3. Build the RAG query function with `wrap_openai` for auto-tracing via Braintrust
-4. Build a golden dataset of 30-50 Vault Q&A pairs
-5. Write custom scorers (Faithfulness, ContextRelevance, HasCitation)
-6. Run experiments with `braintrust eval`, compare results in the Braintrust UI
-7. Iterate: change chunk size, top_k, or prompt template → new experiment → compare
+1. ~~Fetch and store a curated subset of Vault docs into `./corpus/`~~ — 143 MDX files, 1.3MB
+2. ~~Chunk the docs and embed them into Pinecone (serverless free tier)~~ — 1,164 chunks, avg 236 tokens
+3. ~~Build the RAG query function with `wrap_openai` for auto-tracing via Braintrust~~
+4. ~~Build a golden dataset of 30-50 Vault Q&A pairs~~ — 46 cases across 5 categories
+5. ~~Write custom scorers (AnswerCorrectness, ContextRelevance, Faithfulness, HasCitation)~~
+6. ~~Run experiments with `braintrust eval`, compare results in the Braintrust UI~~
+7. ~~Iterate: change top_k, prompt template, scorer prompts → new experiment → compare~~
+
+Latest eval scores: AnswerCorrectness 96.3%, Faithfulness 100%, HasCitation 97.6%, ContextRelevance 75.8%
 
 ### Phase 2 — CI/CD Workflow (future)
 Builds on phase 1. AWS infra lives in `/cipherift-infrastructure` (separate repo).
