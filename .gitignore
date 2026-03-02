@@ -18,4 +18,8 @@ __pycache__/
 # (uncomment if you want to track them)
 # corpus/
 
+# CI/CD gate artifacts (generated during eval runs)
+gate_summary.txt
+eval_output.txt
+
 # Vector data never committed — lives in Pinecone

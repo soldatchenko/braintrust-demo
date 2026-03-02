@@ -2,6 +2,36 @@
 
 ---
 
+### 2026-03-02 02:20
+
+**Context**: CI/CD pipeline — debugging the score threshold gate in GitHub Actions
+
+**Learning**:
+Three separate issues to get the eval workflow running:
+
+1. **GitHub Actions `permissions` is replace-all, not additive.** We added `pull-requests: write` for PR comments, which silently removed the default `contents: read` permission. Checkout failed with "Repository not found" — GitHub returns 404 instead of 403 for private repos (security through obscurity). Fix: explicitly list both `contents: read` and `pull-requests: write`.
+
+2. **Braintrust eval output format is not documented.** The actual format is `89.33% (+01.72%) 'AnswerCorrectness' score (3 improvements, 2 regressions)` — percentage before the quoted name, with the word "score" distinguishing scorers from metrics (tok, s, $). Took 3 iterations to get the regex right. The debug dump approach (print what you're actually parsing) was essential.
+
+3. **The experiment URL is in the CLI output** — `See results for ... at https://...`. No need to hardcode dashboard links. Parse it from eval output.
+
+**Implication**:
+For CI/CD eval pipelines: (1) always test the gate locally with the actual CLI output format before deploying, (2) add a debug step that dumps raw output — you'll need it, (3) GitHub's `permissions` block is a common footgun for private repos.
+
+---
+
+### 2026-03-02 01:30
+
+**Context**: Testing prompt conciseness + reduced top_k via the CI/CD eval pipeline
+
+**Learning**:
+Added "be concise" to the system prompt and reduced top_k from 7 to 5. Hypothesis was that shorter, tighter answers would score better. Results: AnswerCorrectness dropped from 96.3% to 90.9%, Faithfulness dropped from 100% to 97.7%. The conciseness instruction caused the model to omit relevant details that the scorer expected. Fewer chunks didn't improve ContextRelevance either (75.1% vs 75.8%).
+
+**Implication**:
+"Be concise" is not free — it trades completeness for brevity. For RAG pipelines where the eval measures factual coverage against expected answers, verbosity is actually a feature. The right prompt instruction is "be thorough but focused" not "be concise." This is the kind of insight you only get from running the eval, not from intuition.
+
+---
+
 ### 2026-03-01 16:30
 
 **Context**: Building the RAG pipeline end-to-end — chunker, embeddings, Pinecone, pipeline, scorers, evals

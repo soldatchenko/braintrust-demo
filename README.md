@@ -11,24 +11,24 @@ Three phases, each building on the last:
 ```mermaid
 flowchart TD
     subgraph ingest["① Ingestion — one-time"]
-        A["143 Vault MDX files"] --> B["chunk.py\nHeading-based split + breadcrumb prefixes"]
-        B --> C["1,164 chunks\n(avg 236 tokens)"]
-        C --> D["OpenAI\ntext-embedding-3-small"]
-        D --> E[("Pinecone\n1536 dims · cosine")]
+        A["143 Vault MDX files"] --> B["chunk.py<br/>Heading-based split + breadcrumb prefixes"]
+        B --> C["1,164 chunks<br/>(avg 236 tokens)"]
+        C --> D["OpenAI<br/>text-embedding-3-small"]
+        D --> E[("Pinecone<br/>1536 dims · cosine")]
     end
 
     subgraph query["② Query — per question"]
         F["Question"] --> G["Embed query"]
-        G --> H["Pinecone\nsimilarity search\ntop_k = 5"]
-        H --> I["Assemble prompt\nwith retrieved chunks"]
-        I --> J["gpt-4.1-mini\ngenerate answer"]
+        G --> H["Pinecone<br/>similarity search<br/>top_k = 5"]
+        H --> I["Assemble prompt<br/>with retrieved chunks"]
+        I --> J["gpt-4.1-mini<br/>generate answer"]
         J --> K["Answer + sources"]
     end
 
     subgraph eval["③ Evaluation — per experiment"]
-        L["Golden dataset\n46 Q&A pairs"] --> M["Run ② for each case"]
+        L["Golden dataset<br/>46 Q&A pairs"] --> M["Run ② for each case"]
         M --> N["Score with 4 scorers"]
-        N --> O["Braintrust\nexperiment"]
+        N --> O["Braintrust<br/>experiment"]
         O --> P{"Score gate"}
         P -- "pass" --> Q["✅ Merge PR"]
         P -- "fail" --> R["❌ Block PR"]
