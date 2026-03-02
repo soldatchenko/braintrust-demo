@@ -46,7 +46,7 @@ index = pc.Index(os.environ.get("PINECONE_INDEX_NAME", "vault-rag-demo"))
 # --- Config ---
 EMBEDDING_MODEL = "text-embedding-3-small"
 GENERATION_MODEL = "gpt-4.1-mini"
-TOP_K = 7  # increased from 5 — more context for multi-hop questions
+TOP_K = 5  # reduced from 7 — testing if fewer, more relevant chunks improve ContextRelevance
 
 
 @braintrust.traced

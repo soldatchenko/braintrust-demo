@@ -25,8 +25,10 @@ jobs:
   eval:
     name: Run Braintrust Eval
     runs-on: ubuntu-latest
-    # Grant write permission so we can post PR comments
+    # contents:read needed for checkout, pull-requests:write needed for PR comments.
+    # Setting permissions explicitly replaces ALL defaults, so both must be listed.
     permissions:
+      contents: read
       pull-requests: write
 
     steps:
@@ -52,6 +54,13 @@ jobs:
         run: |
           braintrust eval evals/run_eval.py 2>&1 | tee eval_output.txt
 
+      - name: Debug - show raw eval output
+        if: always()
+        run: |
+          echo "=== RAW EVAL OUTPUT (full) ==="
+          cat eval_output.txt
+          echo "=== END RAW OUTPUT ==="
+
       - name: Check score thresholds
         id: gate
         run: python evals/gate.py eval_output.txt
@@ -75,9 +84,21 @@ jobs:
               }
             }
 
+            // Extract the experiment URL from braintrust eval output
+            let experimentUrl = '';
+            try {
+              const evalOutput = fs.readFileSync('eval_output.txt', 'utf8');
+              const urlMatch = evalOutput.match(/See results for .+ at (https:\/\/\S+)/);
+              experimentUrl = urlMatch ? urlMatch[1] : '';
+            } catch (e) {}
+
             const gateResult = '${{ steps.gate.outcome }}';
             const emoji = gateResult === 'success' ? '✅' : '❌';
             const status = gateResult === 'success' ? 'PASSED' : 'FAILED';
+
+            const dashboardLink = experimentUrl
+              ? `[View experiment in Braintrust](${experimentUrl})`
+              : 'Experiment URL not found in eval output';
 
             const body = [
               `## ${emoji} RAG Eval ${status}`,
@@ -86,7 +107,7 @@ jobs:
               summary,
               '```',
               '',
-              `> Full results: [Braintrust Dashboard](https://www.braintrust.dev/app/vault-rag-demo)`,
+              `> ${dashboardLink}`,
             ].join('\n');
 
             // Find and update existing comment, or create new one
