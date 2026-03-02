@@ -116,7 +116,7 @@ braintrust-demo/
 ├── .env.example               # Template — never commit .env
 ├── .env                       # Non-sensitive config (gitignored)
 ├── .gitignore
-├── corpus/                    # Raw Vault MDX docs (143 files, fetched not committed)
+├── corpus/                    # Raw Vault MDX docs (143 files, committed)
 │   ├── auth/                  # 21 files — approle, kubernetes, token, etc.
 │   ├── secrets/               # 51 files — kv, pki, aws, transit, etc.
 │   ├── concepts/              # 23 files — seal, tokens, policies, leases

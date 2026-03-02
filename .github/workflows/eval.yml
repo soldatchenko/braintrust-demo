@@ -84,9 +84,21 @@ jobs:
               }
             }
 
+            // Extract the experiment URL from braintrust eval output
+            let experimentUrl = '';
+            try {
+              const evalOutput = fs.readFileSync('eval_output.txt', 'utf8');
+              const urlMatch = evalOutput.match(/See results for .+ at (https:\/\/\S+)/);
+              experimentUrl = urlMatch ? urlMatch[1] : '';
+            } catch (e) {}
+
             const gateResult = '${{ steps.gate.outcome }}';
             const emoji = gateResult === 'success' ? '✅' : '❌';
             const status = gateResult === 'success' ? 'PASSED' : 'FAILED';
+
+            const dashboardLink = experimentUrl
+              ? `[View experiment in Braintrust](${experimentUrl})`
+              : 'Experiment URL not found in eval output';
 
             const body = [
               `## ${emoji} RAG Eval ${status}`,
@@ -95,7 +107,7 @@ jobs:
               summary,
               '```',
               '',
-              `> Full results: [Braintrust Dashboard](https://www.braintrust.dev/app/vault-rag-demo)`,
+              `> ${dashboardLink}`,
             ].join('\n');
 
             // Find and update existing comment, or create new one
