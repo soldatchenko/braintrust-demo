@@ -25,8 +25,10 @@ jobs:
   eval:
     name: Run Braintrust Eval
     runs-on: ubuntu-latest
-    # Grant write permission so we can post PR comments
+    # contents:read needed for checkout, pull-requests:write needed for PR comments.
+    # Setting permissions explicitly replaces ALL defaults, so both must be listed.
     permissions:
+      contents: read
       pull-requests: write
 
     steps:
