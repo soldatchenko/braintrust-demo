@@ -57,8 +57,8 @@ jobs:
       - name: Debug - show raw eval output
         if: always()
         run: |
-          echo "=== RAW EVAL OUTPUT (last 100 lines) ==="
-          tail -100 eval_output.txt
+          echo "=== RAW EVAL OUTPUT (full) ==="
+          cat eval_output.txt
           echo "=== END RAW OUTPUT ==="
 
       - name: Check score thresholds
