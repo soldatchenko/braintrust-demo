@@ -56,7 +56,8 @@ braintrust-demo/
 ├── evals/
 │   ├── dataset.json           # Golden eval dataset (46 Q&A pairs)
 │   ├── scorers.py             # Custom scorers (3 LLM-as-judge + 1 deterministic)
-│   ├── run_eval.py            # Braintrust Eval() runner
+│   ├── run_eval.py            # Braintrust Eval() runner (supports EXPERIMENT_NAME env var)
+│   ├── generate_traces.py     # Bulk trace generator for populating Braintrust Logs
 │   └── gate.py                # Score threshold gate for CI/CD
 ├── .github/
 │   └── workflows/
@@ -254,6 +255,9 @@ Every query is automatically traced in the [Braintrust dashboard](https://www.br
 
 ```bash
 PINECONE_INDEX_NAME=vault-rag-demo braintrust eval evals/run_eval.py
+
+# With a custom experiment name (shows in the Braintrust Experiments table):
+EXPERIMENT_NAME="my-experiment" braintrust eval evals/run_eval.py
 ```
 
 <details>
@@ -271,6 +275,18 @@ experiment-123 compared to baseline:
 </details>
 
 Results appear in the Braintrust dashboard where you can drill into individual test cases, compare experiments side-by-side, and see which questions improved or regressed.
+
+### Generate traces
+
+Experiments and traces are different in Braintrust. Experiments are scored eval runs (Experiments tab). Traces are logged pipeline requests (Logs tab). Some features like Topics require a minimum number of traces.
+
+```bash
+# Generate 200 traces by looping through the eval dataset questions
+python evals/generate_traces.py
+
+# Or specify a custom count
+python evals/generate_traces.py 300
+```
 
 ## The Iteration Loop
 

@@ -70,7 +70,8 @@ braintrust-demo/
 ├── evals/
 │   ├── dataset.json           # Golden Q&A pairs (46 cases, also uploaded to Braintrust)
 │   ├── scorers.py             # Custom scorers: AnswerCorrectness, ContextRelevance, Faithfulness, HasCitation
-│   ├── run_eval.py            # Braintrust Eval() runner
+│   ├── run_eval.py            # Braintrust Eval() runner (supports EXPERIMENT_NAME env var)
+│   ├── generate_traces.py     # Bulk trace generator — loops dataset questions through the pipeline
 │   └── gate.py                # Score threshold gate for CI/CD (parses eval output, enforces minimums)
 ├── .github/
 │   └── workflows/
@@ -93,6 +94,9 @@ PINECONE_ENVIRONMENT=us-east-1
 
 # Braintrust config
 BRAINTRUST_PROJECT=vault-rag-demo
+
+# Optional — name experiments instead of getting auto-generated IDs
+EXPERIMENT_NAME=my-experiment-name
 ```
 
 For CI/CD, the three API keys are stored as GitHub Secrets. Non-sensitive config
@@ -138,6 +142,8 @@ Lessons learned during development — check these first when debugging:
 | Issue | Root cause | Fix |
 |---|---|---|
 | No traces in Braintrust | Missing `init_logger(project=...)` | Must be called before any `@traced` functions |
+| Experiments have random names | `EXPERIMENT_NAME` not set | Set `EXPERIMENT_NAME` env var before running `braintrust eval` |
+| Topics says "0 traces" | Experiments ≠ traces | Run `python generate_traces.py` to populate Logs tab (Topics needs 200+) |
 | Dataset not in Braintrust Datasets tab | `Eval()` doesn't persist standalone datasets | Use `braintrust.init_dataset()` to upload explicitly |
 | Chunker produces thousands of tiny chunks | Heading regex matches too broadly | Use negative lookahead `(?!#)` for `##` vs `###` |
 | Token splitting infinite loop | Paragraph-boundary adjustment pushes end backward | Enforce minimum step of `max_tokens // 2` |

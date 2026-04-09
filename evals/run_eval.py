@@ -51,6 +51,7 @@ def task(input, hooks=None, **kwargs):
 
 Eval(
     name=os.environ.get("BRAINTRUST_PROJECT", "vault-rag-demo"),
+    experiment_name=os.environ.get("EXPERIMENT_NAME", None),
     data=load_dataset,
     task=task,
     scores=[
